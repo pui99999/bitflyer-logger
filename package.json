@@ -23,6 +23,7 @@
     "typescript": "^3.3.3"
   },
   "dependencies": {
-    "@types/node": "^11.9.0"
+    "@types/node": "^11.9.0",
+    "rpc-websockets": "^4.3.5"
   }
 }
