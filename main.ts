@@ -1,20 +1,20 @@
 const fs = require('fs');
-
+const io = require('socket.io-client');
 let db = [];
 console.log("rpc-websockets on.");
-const rpcws = require("rpc-websockets").Client;
-const ws = new rpcws("wss://ws.lightstream.bitflyer.com/json-rpc");
+//Socket.IO
 const channelName = "lightning_executions_FX_BTC_JPY";
+const socket = io("https://io.lightstream.bitflyer.com", { transports: ["websocket"] });
 
-ws.on("open", () => {
-  ws.call("subscribe", { channel: channelName });
+socket.on("connect", () => {
+  socket.emit("subscribe", channelName);
 });
 
-ws.on("channelMessage", notify => {
+socket.on(channelName, message => {
   db.push({
-    price: notify.message[0].price,
-    size: notify.message[0].size,
-    dateTime: new Date(notify.message[0].exec_date).getTime()
+    price: message[0].price,
+    size: message[0].size,
+    dateTime: new Date(message[0].exec_date).getTime()
   });
 });
 

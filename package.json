@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@types/node": "^11.9.0",
-    "rpc-websockets": "^4.3.5"
+    "rpc-websockets": "^4.3.5",
+    "socket.io-client": "^2.2.0"
   }
 }
