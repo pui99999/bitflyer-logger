@@ -10,42 +10,49 @@ const socket = io("https://io.lightstream.bitflyer.com", { transports: ["websock
 socket.on("connect", () => {
   socket.emit("subscribe", channelName);
 });
-let ltp: number;
-let date: string;
+
 socket.on(channelName, message => {
-  ltp = message[0].price;
-  date = message[0].exec_date;
-  const now = new Date().getTime();
-  const wstime = new Date(date).getTime();
-  console.log(`DELAY [${now - wstime}]`);
-  if (ready && now - wstime < responseLimit) {
-    ready = false;
-    console.log("order.");
-  }
-
+  db.push({
+    health: health,
+    state: state,
+    price: message[0].price,
+    size: message[0].size,
+    dateTime: new Date(message[0].exec_date).getTime()
+  });
 });
 
-const WebSocket = require("rpc-websockets").Client;
+let health: number = 0;
+let state: number = 0;
 
-// note: rpc-websockets supports auto-reconection.
-const ws = new WebSocket("wss://ws.lightstream.bitflyer.com/json-rpc");
-// ws.on("open", () => {
-//   ws.call("subscribe", {
-//     channel: channelName
-//   });
-// });
-ws.on("channelMessage", notify => {
-  //console.log(notify.channel, notify.message);
-  ltp = notify.message[0].price;
-  date = notify.message[0].exec_date;
-  const now = new Date().getTime();
-  const wstime = new Date(date).getTime();
-  console.log(`DELAY [${now - wstime}]`);
-  if (ready && now - wstime < responseLimit) {
-    ready = false;
-    console.log("order.");
-  }
-});
+const boardstate = () => {
+  const startTime = new Date().getTime();
+  //取引所ステータス更新
+  bf.boardState().then((boardState: any) => {
+    const response = new Date().getTime() - startTime;
+    if (response < 500) {
+      health = (boardState.state === "RUNNING") ? 0 : -1;
+      switch (boardState.health) {
+        case "NORMAL":
+          state = 0;
+          break;
+        case "BUSY":
+          state = 1;
+          break;
+        case "VERY BUSY":
+          state = 2;
+          break;
+        case "SUPER BUSY":
+          state = 3;
+          break;
+        default:
+          state = -1;
+          break;
+      }
+    } else {
+      state = -1;
+    }
+  })
+}
 
 const writeFile = (filename: string) => {
   console.log(`writeFile. length[${db.length}]`);
@@ -62,29 +69,5 @@ const write = () => {
   startTime = finishTime;
 }
 
-const checkLtpResponse = () => {
-  bf.ticker().then((ticker: any) => {
-    const ticktime = new Date(ticker.timestamp).getTime() + 32400000;
-    const wstime = new Date(date).getTime();
-    console.log(`[${ticktime - wstime}]${(ticktime > wstime) ? "Tick" : "Websocket"}
-Ticker    :[${ticker.ltp}][${ticktime}]
-Websocket :[${ltp}][${wstime}]`);
-  })
-}
-
-const checkLtpDelay = () => {
-  const now = new Date().getTime();
-  const wstime = new Date(date).getTime();
-  console.log(`DELAY [${now - wstime}]`);
-}
-
-const responseLimit = 1500;
-let ready: boolean = false;
-const readyorder = () => {
-  ready = true;
-  console.log("ready.");
-}
-
-//setInterval(checkLtpResponse, 5500);
-setInterval(readyorder, 6500);
+setInterval(boardstate, 2000);
 setInterval(write, 24 * 60 * 60 * 1000);
